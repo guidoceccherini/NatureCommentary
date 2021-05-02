@@ -1,0 +1,575 @@
+https://code.earthengine.google.com/61d599a8310be1ff05dda80514060df3?noload=1 
+// Load dataset
+var countries = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017"),
+    table = ee.FeatureCollection("users/guidoceccherini/EFFIS_I"),
+    table3 = ee.FeatureCollection("users/guidoceccherini/EFFIS_II"),
+    table4 = ee.FeatureCollection("users/guidoceccherini/EFFIS_III"),
+    table5 = ee.FeatureCollection("users/guidoceccherini/EFFIS_2018_2019");
+
+
+//######################################################################
+//settings
+//https://en.wikipedia.org/wiki/List_of_FIPS_country_codes#P
+// Map.addLayer(table)
+// Map.addLayer(table2)
+
+var WindMap = ee.Image("users/guidoceccherini/MASKGEECaudullo");
+//WindMap -> assign zero to NA values
+WindMap = WindMap.unmask()
+Map.addLayer(WindMap)
+
+
+
+
+//merge EFFIS I, II and III and convert to raster (EFFIS_TOT)
+var empty = ee.Image().byte();
+// print(table)
+var table_Layer = empty.paint(ee.FeatureCollection(table3))
+table_Layer= table_Layer.where(table_Layer.eq(0),1)
+table_Layer = table_Layer.unmask(0)
+
+var table_Layer1 = empty.paint(ee.FeatureCollection(table))
+ table_Layer1= table_Layer1.where(table_Layer1.eq(0),1)
+table_Layer1 = table_Layer1.unmask(0)
+
+
+ var table_Layer2 = empty.paint(ee.FeatureCollection(table4))
+// Map.addLayer(table_Layer2)
+ table_Layer2= table_Layer2.where(table_Layer2.eq(0),1)
+table_Layer2 = table_Layer2.unmask(0)
+
+
+ var table_Layer3 = empty.paint(ee.FeatureCollection(table5))
+// Map.addLayer(table_Layer3)
+ table_Layer3= table_Layer3.where(table_Layer3.eq(0),1)
+table_Layer3 = table_Layer3.unmask(0)
+
+var EFFIS_TOT = table_Layer.add(table_Layer1).add(table_Layer2).add(table_Layer3)
+EFFIS_TOT= EFFIS_TOT.where(EFFIS_TOT.gte(2),1)
+print(EFFIS_TOT)
+Map.addLayer(EFFIS_TOT,{min:0,max:1},'EFFIS_TOT')
+
+
+
+
+// print(aoi)
+Map.addLayer(countries,{}, 'countries', false)
+
+// var list_c = ['AU','HU','PL','IT','FR', 'LO','GM','EZ','RO','HR','SW','FI','UK','EI','SP',
+//                     'LH','LG','EN','GR','BU','BE','NL', 'LU','CY','SI','SZ','PO','NO','MT','DA']
+                    
+                    
+                    
+
+var list_c = ["LU",  "HU", "PL", "IT", "FR", "LO", "GM", "EZ", "RO", "HR", "SW", "FI", "UK",
+"EI" ,"SP", "LH", "LG", "EN", "GR", "BU", "BE", "NL", "AU",  "SI",  "PO",  "DA"]
+
+print(list_c)
+
+
+
+var list_t = [ 65, 20 ,50, 30 ,20 ,75, 50, 60, 60, 70, 10, 10, 40, 40, 10, 35, 10, 50, 20, 50, 60, 60, 55, 50, 10, 30]
+ print(list_t)
+// var list_c = ['IT']
+for (var y=0; y<26; y++) {
+  
+var  code_country = list_c[y]
+
+ 
+//print(countries)
+
+
+var forest_threshold = list_t [y]//40 //tree cover in % as threshold for forest / non forest
+var losspatchsize = 3 // minimum patch size considered as forest loss (filters isolated pixels)
+
+
+// color palette
+var palette = [ 'FFFFFF', 'CE7E45', 'DF923D', 'F1B555', 'FCD163', '99B718',
+               '74A901', '66A000', '529400', '3E8601', '207401', '056201',
+               '004C00', '023B01', '012E01', '011D01', '011301'];
+
+
+
+
+var aoi = ee.FeatureCollection(countries.filterMetadata('country_co', 'equals', code_country)).geometry().simplify(1000)
+// print(aoi.area())
+// aoi = aoi.buffer(1500)
+
+// Map.addLayer(aoi)
+// print(aoi)
+
+//######################################################################
+// load Tree cover, loss, and gain
+var gfc = ee.Image('UMD/hansen/global_forest_change_2019_v1_7').clip(aoi);
+// print('gfc data', gfc)
+var treecover = gfc.select(['treecover2000'])//.clip(geometry);
+var gain = gfc.select(['gain'])//.clip(geometry);
+
+// Create Mask of canopy coverage greater than the threshold%
+var Mask = treecover.gte(forest_threshold);
+
+
+
+//MMU
+var kernel_clean_size = 100; // Kernel (square) size in meters for the disturbance density related cleaning
+var min_trees = 5; // Minimum number of Trees per cleaning kernel
+//Parameters
+
+//Filter
+var S1_Final_Result_2 = Mask.reduceNeighborhood({
+  reducer: ee.Reducer.sum().unweighted(),
+  kernel: ee.Kernel.square(kernel_clean_size,'meters', false),
+})
+var S1_Final_Result_3 = Mask.where(S1_Final_Result_2.gte(min_trees),1).and((Mask.where(S1_Final_Result_2.lt(min_trees),0))).unmask(0);
+var S1_Final_Result_4 = S1_Final_Result_3.multiply(Mask);
+var Mask = S1_Final_Result_4.unmask(0);
+//MMU
+
+
+
+
+// Mask global dataset to create file with high tree coverage
+var highTreeCoverage = gfc.mask(Mask)
+highTreeCoverage = highTreeCoverage.updateMask(highTreeCoverage)
+
+
+// Mask gain to avoid confusion
+var MaskGain = gain.lt(1);
+highTreeCoverage = highTreeCoverage.mask(MaskGain)
+highTreeCoverage = highTreeCoverage.updateMask(highTreeCoverage)
+
+
+// Mask EFFIS to avoid confusion
+var MaskEFFIS = EFFIS_TOT.lt(1);
+var highTreeCoverage_EFFIS = highTreeCoverage.mask(MaskEFFIS)
+highTreeCoverage_EFFIS = highTreeCoverage_EFFIS.updateMask(highTreeCoverage_EFFIS)
+
+
+// print(highTreeCoverage)
+
+// var table_comp = 'users/guidolavespa2511/'+year+'_shp_EFFIS'
+
+////////////////////////////////////////////////////////
+/////  1 FOREST LOSS (exlude from computation EFFIS and Wind areas)
+////////////////////////////////////////////////////////
+
+
+var CountryForestChangeFC = ee.List.sequence(1, 19).map(function(year) {
+  var year = ee.Number(year)
+  var lossYear = highTreeCoverage_EFFIS.select(['lossyear'])
+  var loss = lossYear.eq(year).rename("Forest Loss Total")
+  
+  var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+ var loss = loss.updateMask(WindMap_i.eq(1))
+  
+  
+  // Compute the area of each band.
+  var stats = loss.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+    .reduceRegion({
+      reducer: ee.Reducer.sum(),
+      geometry: aoi,
+      scale: 30,
+      maxPixels: 1e13
+    })
+
+  return ee.Feature(null, {"year": year.add(2000)}).set(stats)
+})
+// print(CountryForestChangeFC)
+
+Export.table.toDrive({
+  collection: ee.FeatureCollection(CountryForestChangeFC),
+  description: 'Country_Forest_Change_loss_WF_'+code_country,
+    	 	  folder: 'NatureLetter',
+  fileFormat: 'CSV'
+});
+
+
+
+////////////////////////////////////////////////////////
+/////  1b FOREST LOSS (exlude from computation EFFIS areas) WIND INCLUDED
+////////////////////////////////////////////////////////
+
+
+var CountryForestChangeFC = ee.List.sequence(1, 19).map(function(year) {
+  var year = ee.Number(year)
+  var lossYear = highTreeCoverage_EFFIS.select(['lossyear'])
+  var loss = lossYear.eq(year).rename("Forest Loss Total")
+  
+  
+  // Compute the area of each band.
+  var stats = loss.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+    .reduceRegion({
+      reducer: ee.Reducer.sum(),
+      geometry: aoi,
+      scale: 30,
+      maxPixels: 1e13
+    })
+
+  return ee.Feature(null, {"year": year.add(2000)}).set(stats)
+})
+// print(CountryForestChangeFC)
+
+Export.table.toDrive({
+  collection: ee.FeatureCollection(CountryForestChangeFC),
+  description: 'Country_Forest_Change_loss_F_'+code_country,
+      	 	  folder: 'NatureLetter',
+  fileFormat: 'CSV'
+});
+
+
+
+
+
+
+
+
+// /////  2 FOREST LOSS excluding sparse loss (exlude from computation EFFIS areas)
+// 	 	////////////////////////////////////////////////////////
+// 	 	var CountryForestChangeFC = ee.List.sequence(1, 19).map(function(year) {
+// 	 	  var year = ee.Number(year)
+// 	 	  var lossYear = highTreeCoverage_EFFIS.select(['lossyear'])
+// 	 	  var loss = lossYear.eq(year).rename("Forest Loss Total")
+	 	  
+
+
+// 	 	var kernel_clean_size = 200; // Kernel (square) size in meters for the disturbance density related cleaning
+// 	 	var min_trees = 3; //9 18 33 Minimum number of Palm Oil Trees per cleaning kernel
+// 	 	//Parameters
+	 	
+// 	 	//Filter
+// 	 	var S1_Final_Result_2 = loss.reduceNeighborhood({
+// 	 	  reducer: ee.Reducer.sum().unweighted(),
+// 	 	  kernel: ee.Kernel.square(kernel_clean_size,'meters', false),
+// 	 	})
+// 	 	var S1_Final_Result_3 = loss.where(S1_Final_Result_2.gte(min_trees),1).and((loss.where(S1_Final_Result_2.lt(min_trees),0))).unmask(0);
+// 	 	var S1_Final_Result_4 = S1_Final_Result_3.multiply(loss);
+// 	var loss_filtered3 = S1_Final_Result_4.unmask(0);
+	 	
+
+
+// var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+
+// var loss_filtered3 = loss_filtered3.updateMask(WindMap_i.eq(1))
+
+
+// 	 	  // Compute the area of each band.
+// 	 	  var stats3 = loss_filtered3.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+// 	 	    .reduceRegion({
+// 	 	      reducer: ee.Reducer.sum(),
+// 	 	      geometry: aoi,
+// 	 	      scale: 30,
+// 	 	      maxPixels: 1e13///9
+// 	 	    })
+	 	
+// 	 	  return ee.Feature(null, {"year": year.add(2000)}).set(stats3)
+// 	 	})
+// 	 	// print(CountryForestChangeFC)
+	 	
+// 	 	Export.table.toDrive({
+// 	 	  collection: ee.FeatureCollection(CountryForestChangeFC),
+// 	 	  description: 'Country_Forest_Change_Compact_loss_WIND_'+code_country,
+// 	 	      	 	  folder: 'NatureLetter',
+// 	 	  fileFormat: 'CSV'
+// 	 	});
+	 	
+
+
+
+
+
+
+////////////////////////////////////////////////////////
+/////  3 FOREST LOSS (do not consider EFFIS areas)
+////////////////////////////////////////////////////////
+
+var CountryForestChangeFC = ee.List.sequence(1, 19).map(function(year) {
+  var year = ee.Number(year)
+  var lossYear = highTreeCoverage.select(['lossyear'])
+  var loss = lossYear.eq(year).rename("Forest Loss Total")
+  
+  
+
+var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+
+ var loss = loss.updateMask(WindMap_i.eq(1))
+
+  
+  // Compute the area of each band.
+  var stats = loss.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+    .reduceRegion({
+      reducer: ee.Reducer.sum(),
+      geometry: aoi,
+      scale: 30,
+      maxPixels: 1e13
+    })
+
+  return ee.Feature(null, {"year": year.add(2000)}).set(stats)
+})
+// print(CountryForestChangeFC)
+
+Export.table.toDrive({
+  collection: ee.FeatureCollection(CountryForestChangeFC),
+  description: 'Country_Forest_Change_loss_W_'+code_country,
+      	 	  folder: 'NatureLetter',
+  fileFormat: 'CSV'
+});
+
+
+
+////////////////////////////////////////////////////////
+/////  4 FOREST LOSS TOT
+////////////////////////////////////////////////////////
+
+var CountryForestChangeFC = ee.List.sequence(1, 19).map(function(year) {
+  var year = ee.Number(year)
+  var lossYear = highTreeCoverage.select(['lossyear'])
+  var loss = lossYear.eq(year).rename("Forest Loss Total")
+  
+  
+
+  // Compute the area of each band.
+  var stats = loss.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+    .reduceRegion({
+      reducer: ee.Reducer.sum(),
+      geometry: aoi,
+      scale: 30,
+      maxPixels: 1e13
+    })
+
+  return ee.Feature(null, {"year": year.add(2000)}).set(stats)
+})
+// print(CountryForestChangeFC)
+
+Export.table.toDrive({
+  collection: ee.FeatureCollection(CountryForestChangeFC),
+  description: 'Country_Forest_Change_loss_TOT_'+code_country,
+      	 	  folder: 'NatureLetter',
+  fileFormat: 'CSV'
+});
+
+
+}
+
+
+
+//######################################################################
+// load Tree cover, loss, and gain
+var gfc = ee.Image('UMD/hansen/global_forest_change_2019_v1_7').clip(aoi);
+// print('gfc data', gfc)
+var treecover = gfc.select(['treecover2000'])//.clip(geometry);
+var gain = gfc.select(['gain'])//.clip(geometry);
+
+// Create Mask of canopy coverage greater than the threshold%
+var Mask = treecover.gte(forest_threshold);
+
+
+
+//MMU
+var kernel_clean_size = 100; // Kernel (square) size in meters for the disturbance density related cleaning
+var min_trees = 5; // Minimum number of Trees per cleaning kernel
+//Parameters
+
+//Filter
+var S1_Final_Result_2 = Mask.reduceNeighborhood({
+  reducer: ee.Reducer.sum().unweighted(),
+  kernel: ee.Kernel.square(kernel_clean_size,'meters', false),
+})
+var S1_Final_Result_3 = Mask.where(S1_Final_Result_2.gte(min_trees),1).and((Mask.where(S1_Final_Result_2.lt(min_trees),0))).unmask(0);
+var S1_Final_Result_4 = S1_Final_Result_3.multiply(Mask);
+var Mask = S1_Final_Result_4.unmask(0);
+//MMU
+
+
+
+
+// Mask global dataset to create file with high tree coverage
+var highTreeCoverage = gfc.mask(Mask)
+highTreeCoverage = highTreeCoverage.updateMask(highTreeCoverage)
+
+
+// Mask gain to avoid confusion
+var MaskGain = gain.lt(1);
+highTreeCoverage = highTreeCoverage.mask(MaskGain)
+highTreeCoverage = highTreeCoverage.updateMask(highTreeCoverage)
+
+
+// Mask EFFIS to avoid confusion
+var MaskEFFIS = EFFIS_TOT.lt(1);
+var highTreeCoverage_EFFIS = highTreeCoverage.mask(MaskEFFIS)
+highTreeCoverage_EFFIS = highTreeCoverage_EFFIS.updateMask(highTreeCoverage_EFFIS)
+
+
+// print(highTreeCoverage)
+
+// var table_comp = 'users/guidolavespa2511/'+year+'_shp_EFFIS'
+
+////////////////////////////////////////////////////////
+/////  1 FOREST LOSS (exlude from computation EFFIS and Wind areas)
+////////////////////////////////////////////////////////
+
+
+var CountryForestChangeFC = ee.List.sequence(1, 19).map(function(year) {
+  var year = ee.Number(year)
+  var lossYear = highTreeCoverage_EFFIS.select(['lossyear'])
+  var loss = lossYear.eq(year).rename("Forest Loss Total")
+  
+  var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+ var loss = loss.updateMask(WindMap_i.eq(1))
+  
+  
+  // Compute the area of each band.
+  var stats = loss.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+    .reduceRegion({
+      reducer: ee.Reducer.sum(),
+      geometry: aoi,
+      scale: 30,
+      maxPixels: 1e13
+    })
+
+  return ee.Feature(null, {"year": year.add(2000)}).set(stats)
+})
+// print(CountryForestChangeFC)
+
+Export.table.toDrive({
+  collection: ee.FeatureCollection(CountryForestChangeFC),
+  description: 'Country_Forest_Change_loss_WF_'+code_country,
+    	 	  folder: 'NatureLetter',
+  fileFormat: 'CSV'
+});
+
+
+
+////////////////////////////////////////////////////////
+/////  1b FOREST LOSS (exlude from computation EFFIS areas) WIND INCLUDED
+////////////////////////////////////////////////////////
+
+
+var CountryForestChangeFC = ee.List.sequence(1, 19).map(function(year) {
+  var year = ee.Number(year)
+  var lossYear = highTreeCoverage_EFFIS.select(['lossyear'])
+  var loss = lossYear.eq(year).rename("Forest Loss Total")
+  
+  
+  // Compute the area of each band.
+  var stats = loss.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+    .reduceRegion({
+      reducer: ee.Reducer.sum(),
+      geometry: aoi,
+      scale: 30,
+      maxPixels: 1e13
+    })
+
+  return ee.Feature(null, {"year": year.add(2000)}).set(stats)
+})
+// print(CountryForestChangeFC)
+
+Export.table.toDrive({
+  collection: ee.FeatureCollection(CountryForestChangeFC),
+  description: 'Country_Forest_Change_loss_F_'+code_country,
+      	 	  folder: 'NatureLetter',
+  fileFormat: 'CSV'
+});
+
+
+
+
+
+
+
+
+// /////  2 FOREST LOSS excluding sparse loss (exlude from computation EFFIS areas)
+// 	 	////////////////////////////////////////////////////////
+// 	 	var CountryForestChangeFC = ee.List.sequence(1, 19).map(function(year) {
+// 	 	  var year = ee.Number(year)
+// 	 	  var lossYear = highTreeCoverage_EFFIS.select(['lossyear'])
+// 	 	  var loss = lossYear.eq(year).rename("Forest Loss Total")
+	 	  
+
+
+// 	 	var kernel_clean_size = 200; // Kernel (square) size in meters for the disturbance density related cleaning
+// 	 	var min_trees = 3; //9 18 33 Minimum number of Palm Oil Trees per cleaning kernel
+// 	 	//Parameters
+	 	
+// 	 	//Filter
+// 	 	var S1_Final_Result_2 = loss.reduceNeighborhood({
+// 	 	  reducer: ee.Reducer.sum().unweighted(),
+// 	 	  kernel: ee.Kernel.square(kernel_clean_size,'meters', false),
+// 	 	})
+// 	 	var S1_Final_Result_3 = loss.where(S1_Final_Result_2.gte(min_trees),1).and((loss.where(S1_Final_Result_2.lt(min_trees),0))).unmask(0);
+// 	 	var S1_Final_Result_4 = S1_Final_Result_3.multiply(loss);
+// 	var loss_filtered3 = S1_Final_Result_4.unmask(0);
+	 	
+
+
+// var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+
+// var loss_filtered3 = loss_filtered3.updateMask(WindMap_i.eq(1))
+
+
+// 	 	  // Compute the area of each band.
+// 	 	  var stats3 = loss_filtered3.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+// 	 	    .reduceRegion({
+// 	 	      reducer: ee.Reducer.sum(),
+// 	 	      geometry: aoi,
+// 	 	      scale: 30,
+// 	 	      maxPixels: 1e13///9
+// 	 	    })
+	 	
+// 	 	  return ee.Feature(null, {"year": year.add(2000)}).set(stats3)
+// 	 	})
+// 	 	// print(CountryForestChangeFC)
+	 	
+// 	 	Export.table.toDrive({
+// 	 	  collection: ee.FeatureCollection(CountryForestChangeFC),
+// 	 	  description: 'Country_Forest_Change_Compact_loss_WIND_'+code_country,
+// 	 	      	 	  folder: 'NatureLetter',
+// 	 	  fileFormat: 'CSV'
+// 	 	});
+	 	
+
+
+
+
+
+
+////////////////////////////////////////////////////////
+/////  3 FOREST LOSS (do not consider EFFIS areas)
+////////////////////////////////////////////////////////
+
+var CountryForestChangeFC = ee.List.sequence(1, 19).map(function(year) {
+  var year = ee.Number(year)
+  var lossYear = highTreeCoverage.select(['lossyear'])
+  var loss = lossYear.eq(year).rename("Forest Loss Total")
+  
+  
+
+var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+
+ var loss = loss.updateMask(WindMap_i.eq(1))
+
+  
+  // Compute the area of each band.
+  var stats = loss.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+    .reduceRegion({
+      reducer: ee.Reducer.sum(),
+      geometry: aoi,
+      scale: 30,
+      maxPixels: 1e13
+    })
+
+  return ee.Feature(null, {"year": year.add(2000)}).set(stats)
+})
+// print(CountryForestChangeFC)
+
+Export.table.toDrive({
+  collection: ee.FeatureCollection(CountryForestChangeFC),
+  description: 'Country_Forest_Change_loss_W_'+code_country,
+      	 	  folder: 'NatureLetter',
+  fileFormat: 'CSV'
+});
+
+
+
+}
+
+

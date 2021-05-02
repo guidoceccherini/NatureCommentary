@@ -1,0 +1,358 @@
+https://code.earthengine.google.com/0436fd2449732f01b854452a99561b68
+
+
+// convert 'date' column to date/time
+WindGio = WindGio
+  .map(function(f) {
+    var v = f.get('DateYear')
+    return f.set({ date: ee.Date.parse("YYYY",v) })
+  })
+
+print(WindGio.limit(1))
+
+Map.addLayer(WindGio,{},'WindFORWIND')
+
+
+//convert WIND to raster
+var empty = ee.Image().byte();
+// print(table)
+var table_Layer = empty.paint(ee.FeatureCollection(WindGio))
+table_Layer= table_Layer.where(table_Layer.eq(0),1)
+table_Layer = table_Layer.unmask(0)
+Map.addLayer(table_Layer,{min:0, max:1},'WindFORWINDRaster')
+
+
+
+// var ab = WindGio.filter(ee.Filter.eq('DateYear',2009))
+// print(ab.limit(12))
+
+// var empty = ee.Image().byte();
+
+// var Wind_Layer = empty.paint(ee.FeatureCollection(ab))
+// Wind_Layer= Wind_Layer.where(Wind_Layer.eq(0),1)
+// Wind_Layer = Wind_Layer.unmask(0)
+
+// print(Wind_Layer)
+// Map.addLayer(Wind_Layer,{min:0,max:1},'Wind_Layer 2009')
+var Countries = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017");
+var EU = ee.FeatureCollection(Countries.filterMetadata('wld_rgn','contains','Europe'));
+EU = EU.filterMetadata('country_na',"not_contains",'Russia')
+EU = EU.filterMetadata('country_na',"not_contains",'Portugal (Azores)')
+EU = EU.filterMetadata('country_na',"not_contains",'Belarus')
+EU = EU.filterMetadata('country_na',"not_contains",'Ukraine')
+EU = EU.filterMetadata('country_na',"not_contains",'Moldova')
+EU = EU.filterMetadata('country_na',"not_contains",'Svalbard')
+var EU_b = EU.geometry().bounds()
+Map.addLayer(EU_b)
+
+
+var table = ee.FeatureCollection("users/guidoceccherini/EFFIS_II"),
+    table2 = ee.FeatureCollection("users/guidoceccherini/EFFIS_I"),
+    table3 = ee.FeatureCollection("users/guidoceccherini/EFFIS_III");
+
+ 
+//WindMask to remove windthrow
+var WindMap = ee.Image("users/guidoceccherini/MASKGEE");
+//WindMap -> assign zero to NA values
+WindMap = WindMap.unmask()
+Map.addLayer(WindMap,{}, 'WindNature')
+
+ 
+
+
+//convert EFFIS to raster
+var empty = ee.Image().byte();
+// print(table)
+var table_Layer = empty.paint(ee.FeatureCollection(table2))
+table_Layer= table_Layer.where(table_Layer.eq(0),1)
+table_Layer = table_Layer.unmask(0)
+
+
+var table_Layer1 = empty.paint(ee.FeatureCollection(table))
+table_Layer1= table_Layer1.where(table_Layer1.eq(0),1)
+table_Layer1 = table_Layer1.unmask(0)
+ var table_Layer2 = empty.paint(ee.FeatureCollection(table3))
+ table_Layer2= table_Layer2.where(table_Layer2.eq(0),1)
+table_Layer2 = table_Layer2.unmask(0)
+
+
+var EFFIS_TOT = table_Layer.add(table_Layer1).add(table_Layer2)
+EFFIS_TOT= EFFIS_TOT.where(EFFIS_TOT.gte(2),1)
+print(EFFIS_TOT)
+Map.addLayer(EFFIS_TOT,{min:0,max:1},'EFFIS_TOT')
+
+
+
+
+
+
+
+
+
+
+/// set a 20% tree cover threshold
+var forest_threshold = 20;
+
+
+// print(table.limit(12))
+
+// var a = table.filter(ee.Filter.gt('EventDate','2015-01-01'))
+// print(a.limit(12))
+
+// load Tree cover, loss, and gain
+var gfc = ee.Image('UMD/hansen/global_forest_change_2018_v1_6');
+
+// Map.addLayer(gfc)
+print('gfc data', gfc)
+var treecover = gfc.select(['treecover2000'])//.clip(geometry);
+
+var gain = gfc.select(['gain'])//.clip(geometry);
+
+var lossyear = gfc.select(['lossyear'])
+
+var loss = gfc.select(['loss']).unmask()
+
+
+// Create Mask of canopy coverage greater than the threshold%
+var Mask = treecover.gte(forest_threshold);
+
+
+// Mask global dataset to create file with high tree coverage
+var highTreeCoverage = gfc.mask(Mask)
+highTreeCoverage = highTreeCoverage.updateMask(highTreeCoverage)
+
+
+// Mask gain to avoid confusion
+var MaskGain = gain.lt(1);
+highTreeCoverage = highTreeCoverage.mask(MaskGain)
+highTreeCoverage = highTreeCoverage.updateMask(highTreeCoverage)
+
+
+// Mask EFFIS to avoid confusion
+var MaskEFFIS = EFFIS_TOT.lt(1);
+var highTreeCoverage_EFFIS = highTreeCoverage.mask(MaskEFFIS)
+highTreeCoverage_EFFIS = highTreeCoverage_EFFIS.updateMask(highTreeCoverage_EFFIS)
+
+// print('highTreeCoverage_EFFIS',highTreeCoverage_EFFIS)
+
+// Map.addLayer(highTreeCoverage_EFFIS.select('treecover2000'),{},'highTreeCoverage_EFFIS')
+// var highTreeCoverage_EFFIS2 = highTreeCoverage_EFFIS.gte(forest_threshold)
+// Map.addLayer(highTreeCoverage_EFFIS2.select('treecover2000'),{},'highTreeCoverage_EFFIS2')
+
+// ////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
+var CountryForestChangeFC = ee.List.sequence(11, 18).map(function(year) {
+  var year = ee.Number(year)
+  var year2000 = ee.Number(year.add(2000))
+  var lossYear = highTreeCoverage_EFFIS.select(['lossyear'])
+  var loss = lossYear.eq(year).rename("Forest Loss Total")
+ 
+var WindY = WindGio.filter(ee.Filter.eq('DateYear',year2000))
+
+var Wind_Layer = empty.paint(ee.FeatureCollection(WindY))
+Wind_Layer= Wind_Layer.where(Wind_Layer.eq(0),1)
+Wind_Layer = Wind_Layer.unmask(0)
+
+var loss_filtered3 = loss.updateMask(Wind_Layer.eq(1))
+
+//   var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+// var loss_filtered3 = loss_filtered3.updateMask(WindMap_i.eq(1))
+
+
+  var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+  var WindMap_i2 = WindMap.select([year])   //.select(listOfBands[year])
+
+var loss_filtered4 = loss_filtered3.updateMask(WindMap_i.eq(0))
+
+
+
+  // Compute the area of each band.
+  var stats3 = loss_filtered4.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+    .reduceRegion({
+      reducer: ee.Reducer.sum(),
+      geometry: EU_b,
+      scale: 30,
+      maxPixels: 1e13///9
+    })
+
+  return ee.Feature(null, {"year": year.add(2000)}).set(stats3)
+})
+ print(CountryForestChangeFC)
+
+Export.table.toDrive({
+  collection: ee.FeatureCollection(CountryForestChangeFC),
+  description: 'WindGiovanniAndNature',
+  fileFormat: 'CSV'
+});
+
+// ////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
+var CountryForestChangeFC = ee.List.sequence(11, 18).map(function(year) {
+  var year = ee.Number(year)
+  var year2000 = ee.Number(year.add(2000))
+  var lossYear = highTreeCoverage_EFFIS.select(['lossyear'])
+  var loss = lossYear.eq(year).rename("Forest Loss Total")
+ 
+var WindY = WindGio.filter(ee.Filter.eq('DateYear',year2000))
+
+var Wind_Layer = empty.paint(ee.FeatureCollection(WindY))
+Wind_Layer= Wind_Layer.where(Wind_Layer.eq(0),1)
+Wind_Layer = Wind_Layer.unmask(0)
+
+var loss_filtered3 = loss.updateMask(Wind_Layer.eq(1))
+
+//   var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+// var loss_filtered3 = loss_filtered3.updateMask(WindMap_i.eq(1))
+
+
+  var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+  var WindMap_i2 = WindMap.select([year])   //.select(listOfBands[year])
+
+var loss_filtered4 = loss_filtered3.updateMask(WindMap_i2.eq(0))
+
+
+
+  // Compute the area of each band.
+  var stats3 = loss_filtered4.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+    .reduceRegion({
+      reducer: ee.Reducer.sum(),
+      geometry: EU_b,
+      scale: 30,
+      maxPixels: 1e13///9
+    })
+
+  return ee.Feature(null, {"year": year.add(2000)}).set(stats3)
+})
+ print(CountryForestChangeFC)
+
+Export.table.toDrive({
+  collection: ee.FeatureCollection(CountryForestChangeFC),
+  description: 'WindGiovanniAndNature_year1',
+  fileFormat: 'CSV'
+});
+
+
+// ////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
+var CountryForestChangeFC = ee.List.sequence(11, 18).map(function(year) {
+  var year = ee.Number(year)
+  var year2000 = ee.Number(year.add(2000))
+  var lossYear = highTreeCoverage_EFFIS.select(['lossyear'])
+  var loss = lossYear.eq(year).rename("Forest Loss Total")
+ 
+var WindY = WindGio.filter(ee.Filter.eq('DateYear',year2000))
+
+var Wind_Layer = empty.paint(ee.FeatureCollection(WindY))
+Wind_Layer= Wind_Layer.where(Wind_Layer.eq(0),1)
+Wind_Layer = Wind_Layer.unmask(0)
+
+var loss_filtered3 = loss.updateMask(Wind_Layer.eq(1))
+
+//   var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+// var loss_filtered3 = loss_filtered3.updateMask(WindMap_i.eq(1))
+
+
+  var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+  var WindMap_i2 = WindMap.select([year])   //.select(listOfBands[year])
+
+var loss_filtered4 = loss_filtered3.updateMask(WindMap_i.eq(1))
+
+
+
+  // Compute the area of each band.
+  var stats3 = loss_filtered4.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+    .reduceRegion({
+      reducer: ee.Reducer.sum(),
+      geometry: EU_b,
+      scale: 30,
+      maxPixels: 1e13///9
+    })
+
+  return ee.Feature(null, {"year": year.add(2000)}).set(stats3)
+})
+ print(CountryForestChangeFC)
+
+Export.table.toDrive({
+  collection: ee.FeatureCollection(CountryForestChangeFC),
+  description: 'WindGiovanniNotNature',
+  fileFormat: 'CSV'
+});
+
+
+// ////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////
+// var CountryForestChangeFC = ee.List.sequence(11, 18).map(function(year) {
+//   var year = ee.Number(year)
+//   var year2000 = ee.Number(year.add(1999))
+//   var lossYear = highTreeCoverage_EFFIS.select(['lossyear'])
+//   var loss = lossYear.eq(year).rename("Forest Loss Total")
+ 
+// var WindY = WindGio.filter(ee.Filter.eq('DateYear',year2000))
+
+// var Wind_Layer = empty.paint(ee.FeatureCollection(WindY))
+// Wind_Layer= Wind_Layer.where(Wind_Layer.eq(0),1)
+// Wind_Layer = Wind_Layer.unmask(0)
+
+// var loss_filtered3 = loss.updateMask(Wind_Layer.eq(1))
+
+// //   var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+// // var loss_filtered3 = loss_filtered3.updateMask(WindMap_i.eq(1))
+
+
+
+//   // Compute the area of each band.
+//   var stats3 = loss_filtered3.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+//     .reduceRegion({
+//       reducer: ee.Reducer.sum(),
+//       geometry: EU_b,
+//       scale: 30,
+//       maxPixels: 1e13///9
+//     })
+
+//   return ee.Feature(null, {"year": year.add(2000)}).set(stats3)
+// })
+// print(CountryForestChangeFC)
+
+// Export.table.toDrive({
+//   collection: ee.FeatureCollection(CountryForestChangeFC),
+//   description: 'WindGiovanniHessdM1',
+//   fileFormat: 'CSV'
+// });
+
+
+
+
+
+
+// ////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////
+// var CountryForestChangeFC = ee.List.sequence(11, 18).map(function(year) {
+//   var year = ee.Number(year)
+//   var year2000 = ee.Number(year.add(2000))
+//   var lossYear = highTreeCoverage_EFFIS.select(['lossyear'])
+//   var loss = lossYear.eq(year).rename("Forest Loss Total")
+ 
+
+//   var WindMap_i = WindMap.select([year.subtract(1)])   //.select(listOfBands[year])
+// var loss_filtered3 = loss.updateMask(WindMap_i.eq(0))
+
+
+
+//   // Compute the area of each band.
+//   var stats3 = loss_filtered3.multiply(ee.Image.pixelArea()) //.addBands(loss_filtered).addBands(forest)
+//     .reduceRegion({
+//       reducer: ee.Reducer.sum(),
+//       geometry: EU_b,
+//       scale: 30,
+//       maxPixels: 1e13///9
+//     })
+
+//   return ee.Feature(null, {"year": year.add(2000)}).set(stats3)
+// })
+// print(CountryForestChangeFC)
+
+// Export.table.toDrive({
+//   collection: ee.FeatureCollection(CountryForestChangeFC),
+//   description: 'WindOURMETHOD',
+//   fileFormat: 'CSV'
+// });

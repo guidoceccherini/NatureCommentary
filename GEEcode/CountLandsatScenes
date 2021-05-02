@@ -1,0 +1,405 @@
+https://code.earthengine.google.com/24c476674905ee07647a77b4b689a569
+
+// Load Dataset Hansen and Fires
+
+var gfc = ee.Image("UMD/hansen/global_forest_change_2018_v1_6"),
+    Countries = ee.FeatureCollection("USDOS/LSIB_SIMPLE/2017");
+
+
+
+ 
+// color palette
+var palette = [ 'FFFFFF', 'CE7E45', 'DF923D', 'F1B555', 'FCD163', '99B718',
+               '74A901', '66A000', '529400', '3E8601', '207401', '056201',
+               '004C00', '023B01', '012E01', '011D01', '011301'];
+
+      
+
+// set EU boundaries
+var EU = ee.FeatureCollection(Countries.filterMetadata('wld_rgn','contains','Europe'));
+EU = EU.filterMetadata('country_na',"not_contains",'Russia')
+EU = EU.filterMetadata('country_na',"not_contains",'Portugal (Azores)')
+EU = EU.filterMetadata('country_na',"not_contains",'Belarus')
+EU = EU.filterMetadata('country_na',"not_contains",'Ukraine')
+EU = EU.filterMetadata('country_na',"not_contains",'Moldova')
+EU = EU.filterMetadata('country_na',"not_contains",'Svalbard')
+EU = EU.filterMetadata('country_na',"not_contains",'Norway')
+EU = EU.filterMetadata('country_na',"not_contains",'Iceland')
+EU = EU.filterMetadata('country_na',"not_contains",'Cyprus')
+// var region = EU.geometry()//.bounds()
+
+Map.addLayer(region)
+
+
+
+
+// #################### L5
+
+
+var collection = (ee.ImageCollection("LANDSAT/LT05/C01/T1_TOA")
+              .filterDate('2004-01-01', '2004-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L5 4', count)///###.getInfo()); 
+var CovL504 = collection.select(0).count()
+
+var collection = (ee.ImageCollection("LANDSAT/LT05/C01/T1_TOA")
+              .filterDate('2005-01-01', '2005-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L5 5', count)///###.getInfo()); 
+var CovL505 = collection.select(0).count()
+
+var collection = (ee.ImageCollection("LANDSAT/LT05/C01/T1_TOA")
+              .filterDate('2006-01-01', '2006-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L5 6', count)///###.getInfo()); 
+var CovL506 = collection.select(0).count()
+
+var collection = (ee.ImageCollection("LANDSAT/LT05/C01/T1_TOA")
+              .filterDate('2007-01-01', '2007-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L5 7', count)///###.getInfo()); 
+var CovL507 = collection.select(0).count()
+
+var collection = (ee.ImageCollection("LANDSAT/LT05/C01/T1_TOA")
+              .filterDate('2008-01-01', '2008-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L5 8', count)///###.getInfo()); 
+var CovL508 = collection.select(0).count()
+
+var collection = (ee.ImageCollection("LANDSAT/LT05/C01/T1_TOA")
+              .filterDate('2009-01-01', '2009-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L5 9', count)///###.getInfo()); 
+var CovL509 = collection.select(0).count()
+
+var collection = (ee.ImageCollection("LANDSAT/LT05/C01/T1_TOA")
+              .filterDate('2010-01-01', '2010-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L5 10', count)///###.getInfo()); 
+var CovL510 = collection.select(0).count()
+
+var collection = (ee.ImageCollection("LANDSAT/LT05/C01/T1_TOA")
+              .filterDate('2011-01-01', '2011-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L5 11', count)///###.getInfo()); 
+var CovL511 = collection.select(0).count()
+
+var collection = (ee.ImageCollection("LANDSAT/LT05/C01/T1_TOA")
+              .filterDate('2012-01-01', '2012-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L5 12', count)///###.getInfo()); 
+var CovL512 = collection.select(0).count()
+
+
+
+
+
+
+// ####### Landsat 8
+
+var collection = (ee.ImageCollection("LANDSAT/LC08/C01/T1_TOA")
+              .filterDate('2013-01-01', '2013-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L8 13', count)///###.getInfo()); 
+var CovL813 = collection.select(0).count()
+
+var collection = (ee.ImageCollection("LANDSAT/LC08/C01/T1_TOA")
+              .filterDate('2014-01-01', '2014-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L8 14', count)///###.getInfo()); 
+var CovL814 = collection.select(0).count()
+
+var collection = (ee.ImageCollection("LANDSAT/LC08/C01/T1_TOA")
+              .filterDate('2015-01-01', '2015-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L8 15', count)///###.getInfo()); 
+var CovL815 = collection.select(0).count()
+
+var collection = (ee.ImageCollection("LANDSAT/LC08/C01/T1_TOA")
+              .filterDate('2016-01-01', '2016-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L8 16', count)///###.getInfo()); 
+var CovL816 = collection.select(0).count()
+
+
+
+var collection = (ee.ImageCollection("LANDSAT/LC08/C01/T1_TOA")
+              .filterDate('2017-01-01', '2017-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L8 17', count)///###.getInfo()); 
+var CovL817 = collection.select(0).count()
+
+
+
+
+
+var collection = (ee.ImageCollection("LANDSAT/LC08/C01/T1_TOA")
+              .filterDate('2018-01-01', '2018-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L8 18', count)///###.getInfo()); 
+var CovL818 = collection.select(0).count()
+
+
+
+
+// #################### L7
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2004-01-01', '2004-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 4', count)///###.getInfo()); 
+var CovL704 = collection.select(0).count()
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2005-01-01', '2005-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 5', count)///###.getInfo()); 
+var CovL705 = collection.select(0).count()
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2006-01-01', '2006-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 6', count)///###.getInfo()); 
+var CovL706 = collection.select(0).count()
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2007-01-01', '2007-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 7', count)///###.getInfo()); 
+var CovL707 = collection.select(0).count()
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2008-01-01', '2008-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 8', count)///###.getInfo()); 
+var CovL708 = collection.select(0).count()
+
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2009-01-01', '2009-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 9', count)///###.getInfo()); 
+var CovL709 = collection.select(0).count()
+
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2010-01-01', '2010-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 10', count)///###.getInfo()); 
+var CovL710 = collection.select(0).count()
+
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2011-01-01', '2011-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 11', count)///###.getInfo()); 
+var CovL711 = collection.select(0).count()
+
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2012-01-01', '2012-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 12', count)///###.getInfo()); 
+var CovL712 = collection.select(0).count()
+
+
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2013-01-01', '2013-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 13', count)///###.getInfo()); 
+var CovL713 = collection.select(0).count()
+
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2014-01-01', '2014-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 14', count)///###.getInfo()); 
+var CovL714 = collection.select(0).count()
+
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2015-01-01', '2015-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 15', count)///###.getInfo()); 
+var CovL715 = collection.select(0).count()
+
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2016-01-01', '2016-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 16', count)///###.getInfo()); 
+var CovL716 = collection.select(0).count()
+
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2017-01-01', '2017-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 17', count)///###.getInfo()); 
+var CovL717 = collection.select(0).count()
+
+
+
+var collection = (ee.ImageCollection("LANDSAT/LE07/C01/T1_TOA")
+              .filterDate('2018-01-01', '2018-12-31')
+              .filterBounds(region)
+              .filterMetadata("CLOUD_COVER", 'less_than',20)
+              )
+var count = collection.size();
+print('No. of images L7 18', count)///###.getInfo()); 
+var CovL718 = collection.select(0).count()
+
+print(collection.limit(2))
+
+
+var palette = [ 'FFFFFF', 'CE7E45', 'DF923D', 'F1B555', 'FCD163', '99B718',
+               '74A901', '66A000', '529400', '3E8601', '207401', '056201',
+               '004C00', '023B01', '012E01', '011D01', '011301'];
+
+
+
+var prova = collection.select(0).count()
+
+print(prova)
+
+Map.addLayer(collection.select(0).count(), {min:0, max:10, palette:palette}, 'count', true, 0.7)
+
+
+
+
+
+
+var CoverageTotal = CovL504.addBands(CovL505)
+.addBands(CovL506).addBands(CovL507)
+.addBands(CovL508).addBands(CovL509)
+.addBands(CovL510).addBands(CovL511)
+.addBands(CovL704).addBands(CovL705)
+.addBands(CovL706).addBands(CovL707)
+.addBands(CovL708).addBands(CovL709)
+.addBands(CovL710).addBands(CovL711)
+.addBands(CovL712).addBands(CovL713)
+.addBands(CovL714).addBands(CovL715)
+.addBands(CovL716).addBands(CovL717)
+.addBands(CovL718)
+.addBands(CovL813)
+.addBands(CovL814).addBands(CovL815)
+.addBands(CovL816).addBands(CovL817)
+.addBands(CovL818)
+
+
+
+
+print(CoverageTotal)
+
+Export.image.toDrive({
+   image: CoverageTotal.toDouble(),
+description: 'CoverageLandsats', 
+// folder: 'EE_Images',
+  crs: 'EPSG:4326',
+  // crsTransform: '[0.25,0,-180,0,-0.25,90]',
+  region: region,
+  // region: ee.Geometry.Polygon([-180, 90, 0, 90, 180, 90, 180, -90, 0, -90, -180, -90], null, false),
+  
+  maxPixels: 1e13,
+  scale:'5000' 
+  }); 
